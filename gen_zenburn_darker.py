@@ -41,8 +41,8 @@ COLOR_MAP = {
     "DCA3A3": "DC8383",
     "E3CEAB": "FEB183",
     # diff only
-    "CFBFAF": "FF0000",
-    "FEB183": "00FF40",
+    "CFBFAF": "00FF40",
+    "FEB183": "FF0000",
 }
 
 HEX_RE = re.compile(r"[0-9A-Fa-f]{6}")
