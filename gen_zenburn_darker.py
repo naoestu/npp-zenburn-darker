@@ -40,9 +40,14 @@ COLOR_MAP = {
     "C89191": "DC8383",
     "DCA3A3": "DC8383",
     "E3CEAB": "FEB183",
-    # diff only
-    "CFBFAF": "00FF40",
-    "FEB183": "FF0000",
+}
+
+# Context-specific fgColor overrides applied after the general remap.
+# Keyed by (LexerType name, WordsStyle name) to avoid the problem of
+# re.sub not reprocessing its own replacement output.
+FG_OVERRIDES: dict[tuple[str, str], str] = {
+    ("diff", "ADDED"): "FF0000",
+    ("diff", "DELETED"): "00FF40",
 }
 
 HEX_RE = re.compile(r"[0-9A-Fa-f]{6}")
@@ -70,6 +75,31 @@ def remap_colors(xml_text: str) -> str:
     return HEX_RE.sub(repl, xml_text)
 
 
+def apply_fg_overrides(xml_text: str) -> str:
+    """Override fgColor for specific (LexerType, WordsStyle) pairs."""
+
+    def patch_block(m: re.Match) -> str:
+        block = m.group(0)
+        lexer_name = m.group(1)
+        for (lx, style), color in FG_OVERRIDES.items():
+            if lx != lexer_name:
+                continue
+            block = re.sub(
+                rf'(<WordsStyle\s+name="{re.escape(style)}"[^>]*?\sfgColor=")'
+                rf'[0-9A-Fa-f]{{6}}',
+                rf"\g<1>{color}",
+                block,
+            )
+        return block
+
+    return re.sub(
+        r"<LexerType\s+name=\"([^\"]+)\"[^>]*>.*?</LexerType>",
+        patch_block,
+        xml_text,
+        flags=re.DOTALL,
+    )
+
+
 def main() -> None:
     src = Path("Zenburn.xml")
     dst = Path("Zenburn_Darker.xml")
@@ -78,7 +108,7 @@ def main() -> None:
         raise FileNotFoundError(f"Input file not found: {src.resolve()}")
 
     original = src.read_text(encoding="utf-8")
-    updated = remap_colors(original)
+    updated = apply_fg_overrides(remap_colors(original))
 
     dst.write_text(updated, encoding="utf-8")
     print(f"Saved: {dst.resolve()}")
